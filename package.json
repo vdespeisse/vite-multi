@@ -2,7 +2,7 @@
   "name": "vite-multi",
   "version": "0.0.0",
   "scripts": {
-    "dev": "MODE=dev vite",
+    "dev": "MODE=dev PROJECT=$npm_config_project APP=$npm_config_app vite",
     "build": "vuedx-typecheck . && vite build",
     "serve": "vite preview",
     "lint": "npm run lint:js",
@@ -29,6 +29,7 @@
     "fs-extra": "^9.1.0",
     "js-yaml": "^4.0.0",
     "typescript": "^4.1.3",
-    "vite": "^2.0.0-beta.50"
+    "vite": "^2.0.0-beta.50",
+    "vite-plugin-components": "^0.6.6"
   }
 }

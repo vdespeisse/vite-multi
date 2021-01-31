@@ -1,7 +1,7 @@
 import * as fse from 'fs-extra'
 import * as chokidar from 'chokidar'
 import * as path from 'path'
-import { readConfig } from './utils'
+import { readConfig, getAppList } from './utils'
 // Make it not dependend on folder from where u run "npm run dev"
 const rootDir = __dirname
 
@@ -9,7 +9,7 @@ export default function multiApp({ project, app, dev }: { project: string, app?:
   return {
     name: 'multi-app', // required, will show up in warnings and errors
     async buildStart() {
-      const buildDir = path.join(rootDir, '.build', app || '')
+      const buildDir = path.join(rootDir, '.build', (!dev && app) ? app : '')
       const projectDir = path.join(rootDir, 'clients', project)
       const config = await _get_config(projectDir, app)
       console.log('project', project, app, projectDir)
@@ -24,7 +24,7 @@ export default function multiApp({ project, app, dev }: { project: string, app?:
         extendDirs = extendDirs.concat(appDir)
       }
       console.log(extendDirs)
-      await fse.emptyDir(path.join(rootDir, '.build'))
+      await fse.emptyDir(buildDir)
       await fse.mkdirp(buildDir)
 
       const copyFiles = async () => {
@@ -81,18 +81,10 @@ async function _save_apps_content(projectDir: string, buildDir: string, config: 
   return await fse.writeFile(path.join(buildDir, 'public', '_apps.json'), JSON.stringify(appsContent), 'utf8')
 }
 async function _create_apps_content(projectDir: string, { apps }: Config) {
-  const appList = await _get_app_list(projectDir, apps!)
+  const appList = await getAppList(projectDir, apps!)
   return await Promise.all(appList.map(app => {
     // const appConfig = await readConfig(path.join(projectDir, 'apps', app, 'config.yml'))
     return { name: app }
   }))
 }
 
-async function _get_app_list(projectDir: string, apps: boolean | Array<string>) {
-  if (Array.isArray(apps)) return apps
-  const appsDir = path.join(projectDir, 'apps')
-  const files = await fse.readdir(appsDir)
-  const isDir = (file: string) => fse.lstatSync(path.join(appsDir, file))
-    .isDirectory()
-  return files.filter(isDir)
-}
