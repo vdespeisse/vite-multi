@@ -5,7 +5,7 @@ import { readConfig, getAppList, saveJson } from './utils'
 // Make it not dependend on folder from where u run "npm run dev"
 const rootDir = __dirname
 
-export default function multiApp({ project, app, dev }: { project: string, app?: string, dev: boolean }) {
+export default function multiApp({ project, dev }: { project: string, dev: boolean }) {
   return {
     name: 'multi-app', // required, will show up in warnings and errors
     async buildStart() {

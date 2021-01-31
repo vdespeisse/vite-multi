@@ -1,0 +1,3 @@
+extends:
+  - common/asset-management
+  - clients/client-multi/common

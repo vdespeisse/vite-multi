@@ -5,14 +5,13 @@ import ViteComponents from 'vite-plugin-components'
 import { resolve } from 'path'
 
 const isDev = process.env.MODE === 'dev'
-const app = process.env.APP
 const project = process.env.PROJECT!
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
     ViteComponents({dirs: ['components']}),
-    multiApp({project, dev: isDev, app }),
+    multiApp({project, dev: isDev }),
   ],
   build: {
     rollupOptions: {
