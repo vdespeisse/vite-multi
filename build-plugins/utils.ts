@@ -18,3 +18,8 @@ export async function getAppList(projectDir: string, apps: boolean | Array<strin
     .isDirectory()
   return files.filter(isDir)
 }
+
+export async function saveJson(filePath: string, data: Object) {
+  await fse.mkdirp(path.dirname(filePath))
+  return await fse.writeFile(filePath, JSON.stringify(data), 'utf8')
+}

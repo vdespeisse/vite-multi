@@ -1,3 +1,0 @@
-extends:
- - clients/test/main
-apps: true

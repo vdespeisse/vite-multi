@@ -1,7 +1,7 @@
 import * as fse from 'fs-extra'
 import * as chokidar from 'chokidar'
 import * as path from 'path'
-import { readConfig, getAppList } from './utils'
+import { readConfig, getAppList, saveJson } from './utils'
 // Make it not dependend on folder from where u run "npm run dev"
 const rootDir = __dirname
 
@@ -9,67 +9,76 @@ export default function multiApp({ project, app, dev }: { project: string, app?:
   return {
     name: 'multi-app', // required, will show up in warnings and errors
     async buildStart() {
-      const buildDir = path.join(rootDir, '.build', (!dev && app) ? app : '')
+      // For app in apps buildApp
+      if (!project) throw new Error('Required: project, use --project=<PROJECTNAME>')
       const projectDir = path.join(rootDir, 'clients', project)
-      const config = await _get_config(projectDir, app)
-      console.log('project', project, app, projectDir)
-      console.log('test', config)
-      // TODO: Optional does not work in plugin even with target: es2019 :(
-      let extendDirs = [path.join(rootDir, 'src')].concat(
-        (config.extends || []).map(d => path.join(rootDir, d)) || []
-      )
-      if (app) {
-        const appPath = app ? `${project}/apps/${app}` : `${project}/main`
-        const appDir = path.join(rootDir, `./clients/${appPath}`)
-        extendDirs = extendDirs.concat(appDir)
-      }
-      console.log(extendDirs)
-      await fse.emptyDir(buildDir)
-      await fse.mkdirp(buildDir)
-
-      const copyFiles = async () => {
-        // Do it sequentially else error
-        for (const dir of extendDirs) {
-          await fse.copy(dir, buildDir)
-        }
-      }
-      const toTargetPath = (filePath: string, baseDir: string) => {
-        return filePath
-          .replace(baseDir, buildDir)
-      }
-      let init = false
-      console.log('MODE', dev)
-      if (dev) {
-        extendDirs.map((baseDir) => {
-          return chokidar.watch(baseDir).on('all', async (event, filePath) => {
-            // Chokidar fires a 'add' event on init but we don't want to copy on init
-            if (!init) { return }
-            if (event === 'add' || event === 'change') {
-              await fse.copy(filePath, toTargetPath(filePath, baseDir))
-            }
-            if (event === 'unlink') {
-              await fse.remove(toTargetPath(filePath, baseDir))
-            }
-          })
-        })
-      }
-      await copyFiles()
-      // TODO: do it automatically if /apps folder ?
-      if (config.apps) {
-        await _save_apps_content(projectDir, buildDir, config)
-      }
-      init = true
+      const config = await getConfig(projectDir)
+      await buildApp({ project, dev })
+      if (!config.apps) return
+      const appList = await getAppList(projectDir, config.apps)
+      await Promise.all(appList.map(app => buildApp({ project, app, dev })))
     },
   }
 }
 
+async function buildApp({ project, app, dev }: { project: string, app?: string, dev: boolean }) {
+  console.log('building', project, app)
+  const buildDir = path.join(rootDir, '.build', app || '')
+  const projectDir = path.join(rootDir, 'clients', project)
+  const config = await getConfig(projectDir, app)
+  // TODO: Optional does not work in plugin even with target: es2019 :(
+  let extendDirs = [path.join(rootDir, 'src')].concat(
+    (config.extends || []).map(d => path.join(rootDir, d)) || []
+  )
+  if (app) {
+    const appPath = app ? `${project}/apps/${app}` : `${project}/main`
+    const appDir = path.join(rootDir, `./clients/${appPath}`)
+    extendDirs = extendDirs.concat(appDir)
+  }
+  console.log(extendDirs)
+  await fse.emptyDir(buildDir)
+  await fse.mkdirp(buildDir)
+
+  const copyFiles = async () => {
+    // Do it sequentially else error
+    for (const dir of extendDirs) {
+      await fse.copy(dir, buildDir)
+    }
+  }
+  const toTargetPath = (filePath: string, baseDir: string) => {
+    return filePath
+      .replace(baseDir, buildDir)
+  }
+  let init = false
+  if (dev) {
+    extendDirs.map((baseDir) => {
+      return chokidar.watch(baseDir).on('all', async (event, filePath) => {
+        // Chokidar fires a 'add' event on init but we don't want to copy on init
+        if (!init) { return }
+        if (event === 'add' || event === 'change') {
+          await fse.copy(filePath, toTargetPath(filePath, baseDir))
+        }
+        if (event === 'unlink') {
+          await fse.remove(toTargetPath(filePath, baseDir))
+        }
+      })
+    })
+  }
+  await copyFiles()
+  // TODO: do it automatically if /apps folder ?
+  if (config.apps) {
+    await _save_apps_content(projectDir, buildDir, config)
+  }
+  const cfg = { ...config, app }
+  await saveJson(path.join(buildDir, 'config.json'), cfg)
+  init = true
+}
+
 // Merge project config and app config file
-async function _get_config(projectDir: string, app: string | undefined): Promise<Config> {
+async function getConfig(projectDir: string, app?: string): Promise<Config> {
   // Default to empty object if file does not exist
-  const baseConfig = await readConfig(path.join(projectDir, 'config.yml'))
-  if (!app) return baseConfig
-  const appConfig = await readConfig(path.join(projectDir, 'apps', app, 'config.yml'))
-  return { ...baseConfig, ...appConfig }
+  if (app) return readConfig(path.join(projectDir, 'apps', app, 'config.yml'))
+  return readConfig(path.join(projectDir, 'config.yml'))
 }
 
 async function _save_apps_content(projectDir: string, buildDir: string, config: Config) {
@@ -77,8 +86,7 @@ async function _save_apps_content(projectDir: string, buildDir: string, config: 
   // const json = JSON.stringify({
   //   body: appsContent
   // })
-  await fse.mkdirp(path.join(buildDir, 'public'))
-  return await fse.writeFile(path.join(buildDir, 'public', '_apps.json'), JSON.stringify(appsContent), 'utf8')
+  return saveJson(path.join(buildDir, '_apps.json'), appsContent)
 }
 async function _create_apps_content(projectDir: string, { apps }: Config) {
   const appList = await getAppList(projectDir, apps!)

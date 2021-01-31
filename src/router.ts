@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router';
+// @ts-ignore
+import config from './config.json'
 
-const routerHistory = createWebHistory();
+const routerHistory = createWebHistory(config.app ? `/${config.app}/` : '');
 // Auto generate pages from /pages folder content
 const pages = import.meta.glob('./pages/**/*.vue')
 const routes = Object.keys(pages).map(k => {
