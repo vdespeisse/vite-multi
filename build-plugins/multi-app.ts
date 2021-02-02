@@ -10,6 +10,7 @@ export default function multiApp({ project, dev }: { project: string, dev: boole
     name: 'multi-app', // required, will show up in warnings and errors
     async buildStart() {
       // For app in apps buildApp
+      console.log('yo', process.env.MODE)
       if (!project) throw new Error('Required: project, use --project=<PROJECTNAME>')
       const projectDir = path.join(rootDir, 'clients', project)
       const config = await getConfig(projectDir)
@@ -52,9 +53,11 @@ async function buildApp({ project, app, dev }: { project: string, app?: string, 
   let init = false
   if (dev) {
     extendDirs.map((baseDir) => {
+      // console.log('watching ', baseDir)
       return chokidar.watch(baseDir).on('all', async (event, filePath) => {
         // Chokidar fires a 'add' event on init but we don't want to copy on init
         if (!init) { return }
+        // console.log('event', filePath)
         if (event === 'add' || event === 'change') {
           await fse.copy(filePath, toTargetPath(filePath, baseDir))
         }

@@ -15,6 +15,7 @@ const routes = Object.keys(pages).map(k => {
     component: pages[k],
   }
 })
+console.log(config.app, routes)
 
 export const router = createRouter({
   history: routerHistory,
