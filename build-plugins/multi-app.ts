@@ -2,27 +2,27 @@ import * as fse from 'fs-extra'
 import * as chokidar from 'chokidar'
 import * as path from 'path'
 import { readConfig, getAppList, saveJson } from './utils'
-// Make it not dependend on folder from where u run "npm run dev"
+// TODO: Make it not dependend on folder from where u run "npm run dev"
 const rootDir = __dirname
 
-export default function multiApp({ project, dev }: { project: string, dev: boolean }) {
+
+export default function multiApp({ project, mode }: { project: string, mode: string }) {
   return {
     name: 'multi-app', // required, will show up in warnings and errors
     async buildStart() {
       // For app in apps buildApp
-      console.log('yo', process.env.MODE)
       if (!project) throw new Error('Required: project, use --project=<PROJECTNAME>')
       const projectDir = path.join(rootDir, 'clients', project)
       const config = await getConfig(projectDir)
-      await buildApp({ project, dev })
+      await buildApp({ project, mode })
       if (!config.apps) return
       const appList = await getAppList(projectDir, config.apps)
-      await Promise.all(appList.map(app => buildApp({ project, app, dev })))
+      await Promise.all(appList.map(app => buildApp({ project, app, mode })))
     },
   }
 }
 
-async function buildApp({ project, app, dev }: { project: string, app?: string, dev: boolean }) {
+async function buildApp({ project, app, mode }: { project: string, app?: string, mode: string }) {
   console.log('building', project, app)
   const buildDir = path.join(rootDir, '.build', app || '')
   const projectDir = path.join(rootDir, 'clients', project)
@@ -36,7 +36,6 @@ async function buildApp({ project, app, dev }: { project: string, app?: string, 
     const appDir = path.join(rootDir, `./clients/${appPath}`)
     extendDirs = extendDirs.concat(appDir)
   }
-  console.log(extendDirs)
   await fse.emptyDir(buildDir)
   await fse.mkdirp(buildDir)
 
@@ -51,9 +50,9 @@ async function buildApp({ project, app, dev }: { project: string, app?: string, 
       .replace(baseDir, buildDir)
   }
   let init = false
-  if (dev) {
+  if (mode === 'development') {
     extendDirs.map((baseDir) => {
-      // console.log('watching ', baseDir)
+      console.log('watching ', baseDir)
       return chokidar.watch(baseDir).on('all', async (event, filePath) => {
         // Chokidar fires a 'add' event on init but we don't want to copy on init
         if (!init) { return }

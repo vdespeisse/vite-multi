@@ -4,14 +4,15 @@ import multiApp from './build-plugins/multi-app'
 import ViteComponents from 'vite-plugin-components'
 import { resolve } from 'path'
 
-const isDev = process.env.MODE === 'dev'
+// TODO: Can't use import.meta.env.MODE in build step ?
+const mode = process.env.MODE
 const project = process.env.PROJECT!
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
     ViteComponents({dirs: ['components']}),
-    multiApp({project, dev: isDev }),
+    multiApp({project, mode }),
   ],
   build: {
     rollupOptions: {

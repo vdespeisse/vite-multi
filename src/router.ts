@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
-// @ts-ignore
+// @ts-ignore TODO: Find a way around writing this
 import config from './config.json'
 
 const routerHistory = createWebHistory(config.app ? `/${config.app}/` : '');
